@@ -1,0 +1,9 @@
+#vs files
+*.vcxproj*
+*.obj
+*.log
+*.tlog
+*.lastbuildstate
+*.pdb
+*.tlog
+*.pch
