@@ -32,8 +32,8 @@ cv::Rect get_groundtruth(string& line) {
 }
 
 void testKCF() {
-	string img_file = "D:/Dataset/OTB100/Mhyang.txt";
-	string label_file = "D:/Dataset/OTB100/Mhyang_label.txt";
+	string img_file = "J:/Dataset/OTB100/Mhyang.txt";
+	string label_file = "J:/Dataset/OTB100/Mhyang_label.txt";
 	LDESTracker tracker;
 
 	ifstream fin, lfin;
@@ -60,14 +60,14 @@ void testKCF() {
 
 		cv::rectangle(image, new_pos, cv::Scalar(0, 0, 255), 2);
 		cv::imshow("trackKCF", image);
-		if (cv::waitKey() == 27)
+		if (cv::waitKey(1) == 27)
 			break;
 	}
 }
 
 void testLDES() {
-	string img_file = "D:/Dataset/OTB100/Mhyang.txt";
-	string label_file = "D:/Dataset/OTB100/Mhyang_label.txt";
+	string img_file = "J:/Dataset/OTB100/Mhyang.txt";
+	string label_file = "J:/Dataset/OTB100/Mhyang_label.txt";
 	LDESTracker tracker;
 
 	ifstream fin, lfin;

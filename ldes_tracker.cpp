@@ -348,11 +348,10 @@ void LDESTracker::updateModel(cv::Mat& image, int polish) {
 	cv::logPolar(patchL, patchL, cv::Point2f(0.5*patchL.cols, 0.5*patchL.rows), mag, cv::INTER_LINEAR);
 
 	cv::Mat x = getFeatures(patch, _han, size_patch, false);
-	cout << empty.empty() << endl;
 	cv::Mat xl = getFeatures(patchL, empty, size_scale, false);
 
 	estimateLocation(_z, x);
-	estimateScale(modelPatch, xl);
+	//estimateScale(modelPatch, xl);
 }
 
 void LDESTracker::createGaussianPeak(int sizey, int sizex) {
