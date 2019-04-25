@@ -11,7 +11,7 @@ public:
 	~LDESTracker();
 
 	void init(const cv::Rect &roi, cv::Mat image);
-	cv::Rect update(cv::Mat image);	//update BGD
+	void update(cv::Mat image);	//update BGD
 
 	float interp_n;
 	float interp_factor; // linear interpolation factor for adaptation
@@ -136,6 +136,7 @@ protected:
 private:
 	int size_patch[3];
 	int size_scale[3];
+	int size_search[3];
 	float _scale;
 	int _gaussian_size;
 	bool _hogfeatures;

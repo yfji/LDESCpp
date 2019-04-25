@@ -16,7 +16,7 @@ cv::Rect get_groundtruth(string& line);
 
 int main()
 {
-	testKCF();
+	testLDES();
 	return 0;
 }
 

@@ -20,6 +20,7 @@ LDESTracker::LDESTracker()
 	color_update_rate = 0.01;
 	color_bins = 10;
 	merge_factor = 0.4;
+	_rotation = false;
 }
 
 
@@ -28,7 +29,7 @@ LDESTracker::~LDESTracker()
 }
 
 void LDESTracker::init(const cv::Rect &roi, cv::Mat image) {
-	cell_size = 8;
+	cell_size = 4;
 
 	_roi = roi;
 	target_sz = roi.size();
@@ -91,8 +92,6 @@ void LDESTracker::init(const cv::Rect &roi, cv::Mat image) {
 	train_interp_factor = 0.012;
 	interp_factor_scale = 0.015;
 
-	cell_size /= 2;
-	cell_size_search /= 2;
 	getTemplates(image);
 }
 
@@ -139,7 +138,7 @@ void LDESTracker::trainScale(cv::Mat& x, float interp_factor) {
 	modelPatch = (1 - interp_factor)*modelPatch + interp_factor * x;
 }
 
-cv::Rect LDESTracker::update(cv::Mat image) {
+void LDESTracker::update(cv::Mat image) {
 	//update BGD
 	im_height = image.rows;
 	im_width = image.cols;
@@ -335,7 +334,7 @@ void LDESTracker::updateModel(cv::Mat& image, int polish) {
 	cv::Size win_size = window_sz0;
 	cv::Size w_sz0;
 	cv::Mat _han, empty;
-	if (polish > 0) {
+	if (polish >= 0) {
 		w_sz0 = window_sz0;
 		_han = hann;
 	}
@@ -348,8 +347,9 @@ void LDESTracker::updateModel(cv::Mat& image, int polish) {
 
 	cv::logPolar(patchL, patchL, cv::Point2f(0.5*patchL.cols, 0.5*patchL.rows), mag, cv::INTER_LINEAR);
 
-	cv::Mat x = getFeatures(patch, _han, false);
-	cv::Mat xl = getFeatures(patchL, empty, false);
+	cv::Mat x = getFeatures(patch, _han, size_patch, false);
+	cout << empty.empty() << endl;
+	cv::Mat xl = getFeatures(patchL, empty, size_scale, false);
 
 	estimateLocation(_z, x);
 	estimateScale(modelPatch, xl);
