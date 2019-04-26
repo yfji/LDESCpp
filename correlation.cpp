@@ -19,7 +19,6 @@ cv::Mat gaussianCorrelation(cv::Mat& x1, cv::Mat& x2, int h, int w, int channel,
 		xy_temp.convertTo(xy_temp, CV_32F);
 		xy += xy_temp;
 	}
-
 	cv::Mat d;
 	cv::max(((xx + yy) - 2. * xy) / (w * h * channel), 0, d);
 
@@ -61,7 +60,7 @@ cv::Mat linearCorrelation(cv::Mat& x1, cv::Mat& x2, int h, int w, int channel) {
 		cv::mulSpectrums(fftd(x), fftd(y), xy_temp, 0, true);
 		xy = xy + xy_temp;
 	}
-
+	xy.convertTo(xy, CV_32F);
 	return xy / (h*w*channel);
 }
 
@@ -77,11 +76,11 @@ cv::Mat polynomialCorrelation(cv::Mat& x1, cv::Mat& x2, int h, int w, int channe
 		//rearrange(caux);	//rearange or not?
 		//caux.convertTo(caux, CV_32F);
 		xy_temp = fftd(xy_temp, true);
+		xy_temp.convertTo(xy_temp, CV_32F);
 		xy = xy + xy_temp;
 	}
 	cv::Mat k;
 	cv::pow(xy / (h*w*channel) + 1, 9, k);	//polynomal
-	k.convertTo(k, CV_32F);
 	return fftd(k);
 }
 
@@ -91,15 +90,21 @@ cv::Mat phaseCorrelation(cv::Mat& x1, cv::Mat& x2, int h, int w, int channel) {
 	cv::Mat x;
 	cv::Mat y;
 	cv::Mat d;
+	cv::Mat d2;
 	for (int i = 0; i < channel; i++) {
 		x = x1.row(i).reshape(1, h);;
 		y = x2.row(i).reshape(1, h);
-		cv::mulSpectrums(fftd(x), fftd(y), xy_temp, 0, true);
-		//rearrange(caux);
+		cv::mulSpectrums(fftd(y), fftd(x), xy_temp, 0, true);
 		cv::mulSpectrums(xy_temp, xy_temp, d, 0, true);
-		d = d+0.001;
-		d = complexDivision(xy_temp, d);
-		xy = xy + d;
+		cv::sqrt(real(d), d);
+		d += 2.2204e-16;
+		//d = complexDivision(xy_temp, d);
+		vector<cv::Mat> planes = { d,d };
+		cv::merge(planes, d2);
+		cv::divide(xy_temp, d2, xy_temp);
+		//xy_temp = complexDivision(xy_temp, d2);
+		xy_temp.convertTo(xy_temp, CV_32F);
+		xy += xy_temp;
 	}
 	return xy;
 }

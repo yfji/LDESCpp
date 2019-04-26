@@ -97,6 +97,9 @@ public:
 	}
 
 	cv::Rect testKCFTracker(const cv::Mat& image, cv::Rect& rect, bool init = false);
+	cv::Mat getFeatures(const cv::Mat & patch, const cv::Mat& han, int* sizes, bool inithann = false);
+	float subPixelPeak(float left, float center, float right);
+	float calcPSR(const cv::Mat& res, cv::Point2i& peak_loc);
 protected:
 	void estimateLocation(cv::Mat& z, cv::Mat x);
 	void estimateScale(cv::Mat& z, cv::Mat& x);
@@ -110,15 +113,12 @@ protected:
 
 	void getTemplates(const cv::Mat& image);
 
-	cv::Mat getFeatures(const cv::Mat & patch, cv::Mat& han, int* sizes, bool inithann = false);
-
-	void getSubWindow(const cv::Mat& image, cv::Size& win, cv::Size& win0);
+	void getSubWindow(const cv::Mat& image, cv::Size& win0);
 	cv::Mat padImage(const cv::Mat& image, int& x1, int& y1, int& x2, int& y2);
 	cv::Mat cropImage(const cv::Mat& image, const cv::Point2i& pos, const cv::Size& sz);
 	cv::Mat cropImageAffine(const cv::Mat& image, const cv::Point2i& pos, const cv::Size& sz, float scale, float rot);	
 
-	float subPixelPeak(float left, float center, float right);
-	float calcPSR(const cv::Mat& res, cv::Point2i& peak_loc);
+	
 
 	cv::Mat hogFeatures;
 	cv::Mat _alphaf;
