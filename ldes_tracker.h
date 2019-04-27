@@ -97,7 +97,8 @@ public:
 	}
 
 	cv::Rect testKCFTracker(const cv::Mat& image, cv::Rect& rect, bool init = false);
-	cv::Mat getFeatures(const cv::Mat & patch, const cv::Mat& han, int* sizes, bool inithann = false);
+	cv::Mat getFeatures(const cv::Mat & patch, cv::Mat& han, int* sizes, bool inithann = false);
+	cv::Mat getPixFeatures(const cv::Mat& patch, int* size);
 	float subPixelPeak(float left, float center, float right);
 	float calcPSR(const cv::Mat& res, cv::Point2i& peak_loc);
 protected:

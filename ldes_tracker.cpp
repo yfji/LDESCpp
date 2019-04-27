@@ -79,13 +79,14 @@ void LDESTracker::init(const cv::Rect &roi, cv::Mat image) {
 	avg_dim = (int)((target_sz.width + target_sz.height) / 2.5);
 	scale_sz.width = target_sz.width + avg_dim;
 	scale_sz.height = target_sz.height + avg_dim;
-	scale_sz_window.width = 128;
-	scale_sz_window.height = 128;
+	scale_sz_window.width = 120;
+	scale_sz_window.height = 120;
 
 	scale_sz0 = scale_sz;
 
-	int cw = scale_sz_window.width, ch = scale_sz_window.height;	//all of fucking tricks...
-	mag = ch / (log(sqrt((cw*cw + ch * ch)*0.25)));
+	//int cw = scale_sz_window.width, ch = scale_sz_window.height;	//all of fucking tricks...
+	//mag = ch / (log(sqrt((cw*cw + ch * ch)*0.25)));
+	mag = 30;
 
 	//hann_search = hann2D(scaleSize(window_sz_search0, 1.0 / cell_size_search));
 
@@ -107,18 +108,16 @@ void LDESTracker::getSubWindow(const cv::Mat& image, cv::Size& win0) {
 		patchL = cropImage(image, cur_pos, scaleSize(scale_sz, cur_scale));
 	}
 	cv::resize(patchL, patchL, scale_sz_window, cv::INTER_LINEAR);
-	cv::Mat tmp;
-	cv::logPolar(patchL, tmp, cv::Point2f(0.5*patchL.cols, 0.5*patchL.rows), mag, cv::INTER_LINEAR);
-	cv::logPolar(patchL, tmp, cv::Point2f(0.5*patchL.cols, 0.5*patchL.rows), mag, cv::INTER_LINEAR);
-	tmp.copyTo(patchL);
+	cv::logPolar(patchL, patchL, cv::Point2f(0.5*patchL.cols, 0.5*patchL.rows), mag, cv::INTER_LINEAR);
 }
 
 void LDESTracker::getTemplates(const cv::Mat& image) {
+	cv::Mat empty;
 	getSubWindow(image, window_sz0);
 
 	cv::imshow("template", patchL);
 	cv::Mat x = getFeatures(patch, hann, size_patch, true);
-	cv::Mat scale_x = getFeatures(patchL, cv::Mat(), size_scale, false);
+	cv::Mat scale_x = getFeatures(patchL, empty, size_scale, false);
 
 	createGaussianPeak(size_patch[0], size_patch[1]);
 
@@ -173,7 +172,8 @@ void LDESTracker::update(cv::Mat image) {
 	getSubWindow(image, window_sz0);
 
 	cv::Mat x = getFeatures(patch, hann, size_patch, false);
-	cv::Mat xl = getFeatures(patchL, cv::Mat(), size_scale, false);
+	cv::Mat empty;
+	cv::Mat xl = getFeatures(patchL, empty, size_scale, false);
 
 	trainLocation(x, train_interp_factor);
 	trainScale(xl, interp_factor_scale);
@@ -284,8 +284,8 @@ void LDESTracker::estimateLocation(cv::Mat& z, cv::Mat x)
 	}
 	//Different from C++ code and MATLAB code
 	float hori_delta = p.x, ver_delta = p.y;
-	//hori_delta -= (res.cols) / 2;
-	//ver_delta -= (res.rows) / 2;
+	hori_delta -= (res.cols) / 2;
+	ver_delta -= (res.rows) / 2;
 
 	cout << hori_delta << ',' << ver_delta << endl;
 	if (_rotation) {
@@ -296,8 +296,8 @@ void LDESTracker::estimateLocation(cv::Mat& z, cv::Mat x)
 		cur_pos.y = MIN(cur_pos.y + dy, im_height - 1);
 	}
 	else {
-		cur_pos.x = MIN(cur_pos.x - window_sz0.width / 2 + hori_delta * cell_size, im_width - 1);
-		cur_pos.y = MIN(cur_pos.y - window_sz0.height / 2 + ver_delta * cell_size, im_height - 1);
+		cur_pos.x = MIN(cur_pos.x + hori_delta * cell_size, im_width - 1);
+		cur_pos.y = MIN(cur_pos.y + ver_delta * cell_size, im_height - 1);
 
 		peak_val_location = peak_value;
 
@@ -341,7 +341,7 @@ void LDESTracker::estimateScale(cv::Mat& z, cv::Mat& x) {
 void LDESTracker::updateModel(cv::Mat& image, int polish) {
 	cv::Size win_size = window_sz0;
 	cv::Size w_sz0;
-	cv::Mat _han;
+	cv::Mat _han, empty;
 	if (polish >= 0) {
 		w_sz0 = window_sz0;
 		_han = hann;
@@ -356,7 +356,7 @@ void LDESTracker::updateModel(cv::Mat& image, int polish) {
 	cv::imshow("logpolar", patchL);
 
 	cv::Mat x = getFeatures(patch, _han, size_patch, false);
-	cv::Mat xl = getFeatures(patchL, cv::Mat(), size_scale, false);
+	cv::Mat xl = getFeatures(patchL, empty, size_scale, false);
 
 	estimateLocation(_z, x);
 	estimateScale(modelPatch, xl);
@@ -383,7 +383,7 @@ void LDESTracker::createGaussianPeak(int sizey, int sizex) {
 	_yf = fftd(_y);
 }
 
-cv::Mat LDESTracker::getFeatures(const cv::Mat & patch, const cv::Mat& han, int* sizes, bool inithann)
+cv::Mat LDESTracker::getFeatures(const cv::Mat & patch, cv::Mat& han, int* sizes, bool inithann)
 {
 	cv::Mat FeaturesMap;
 	// HOG features
@@ -404,12 +404,28 @@ cv::Mat LDESTracker::getFeatures(const cv::Mat & patch, const cv::Mat& han, int*
 		cv::Size hannSize(sizes[1], sizes[0]);
 		cv::Mat hannsMat = hann3D(hannSize, sizes[2]);
 		hannsMat.copyTo(han);
+		cout << FeaturesMap.rows << ',' << FeaturesMap.cols << endl;
+		cout<<han.rows<<','<<han.cols<<endl;
 		FeaturesMap = han.mul(FeaturesMap);
 	}
 	else if (!han.empty())
 		FeaturesMap = han.mul(FeaturesMap);
 	//std::cout << "feature map size: " << size_patch[0] << ',' << size_patch[1] << std::endl;
 	return FeaturesMap;
+}
+
+cv::Mat LDESTracker::getPixFeatures(const cv::Mat& patch, int* size) {
+	int h = patch.rows, w = patch.cols;
+	cv::Mat features(patch.channels(), w*h, CV_32F);
+	vector<cv::Mat > planes(3);
+	cv::split(patch, planes);
+	planes[0].reshape(1, 1).copyTo(features.row(0));
+	planes[1].reshape(1, 1).copyTo(features.row(1));
+	planes[2].reshape(1, 1).copyTo(features.row(2));
+	size[0] = h;
+	size[1] = w;
+	size[2] = patch.channels();
+	return features;
 }
 
 float LDESTracker::subPixelPeak(float left, float center, float right) {
@@ -436,7 +452,6 @@ cv::Rect LDESTracker::testKCFTracker(const cv::Mat& image, cv::Rect& rect, bool 
 		cv::Mat win_img = image.clone();
 		cv::Rect rec(cur_pos.x - window_sz.width / 2, cur_pos.y - window_sz.height / 2, window_sz.width, window_sz.height);
 		cv::rectangle(win_img, rec, cv::Scalar(0, 255, 0), 2);
-		
 		cv::Mat x = getFeatures(patch, hann, size_patch, false);
 		estimateLocation(_z, x);
 		cv::circle(win_img, cur_pos, 4, cv::Scalar(0, 0, 255), -1);
