@@ -50,6 +50,8 @@ void testKCF() {
 		string filename, gt;
 		getline(fin, filename);
 		getline(lfin, gt);
+		if (gt.length() == 0)
+			continue;
 
 		cv::Mat image = cv::imread(filename);
 		cv::Rect position = get_groundtruth(gt);
@@ -70,8 +72,8 @@ void testKCF() {
 }
 
 void testLDES() {
-	string img_file = "J:/Dataset/OTB100/Toy.txt";
-	string label_file = "J:/Dataset/OTB100/Toy_label.txt";
+	string img_file = "J:/Dataset/OTB100/Mhyang.txt";
+	string label_file = "J:/Dataset/OTB100/Mhyang_label.txt";
 	LDESTracker tracker;
 
 	ifstream fin, lfin;
@@ -92,7 +94,7 @@ void testLDES() {
 			new_pos = position;
 		}
 		else {
-			tracker.update(image);
+			tracker.updateModel(image,0);
 			new_pos = tracker.cur_roi;
 		}
 		++frameIndex;
@@ -120,12 +122,14 @@ cv::Mat getHistFeatures(cv::Mat& img, int* size) {
 void testPhaseCorrelation() {
 	cv::Rect roi(84, 53, 62, 70);
 	LDESTracker tracker;
-
+	float padding = 2.5;
 	int sz = 120;
+
+	int window_sz = static_cast<int>(sqrt(roi.area())*padding);
 	int cx = (int)(roi.x + roi.width*0.5);
 	int cy = (int)(roi.y + roi.height*0.5);
 
-	cv::Rect window(cx - sz / 2, cy - sz / 2, sz, sz);
+	cv::Rect window(cx - window_sz / 2, cy - window_sz / 2, window_sz, window_sz);
 
 	string img1_path = "I:/Develop/OpenCV/LDESTracker/LDESTracker/0001.jpg";
 
@@ -134,17 +138,18 @@ void testPhaseCorrelation() {
 	cv::Mat img2;
 	cv::resize(img1, img1, cv::Size(sz, sz));
 
-	float cur_scale = 1.5;
-	cv::Mat rot_matrix = cv::getRotationMatrix2D(cv::Point2f(cx, cy), -7.6, 1.3232);
+	float last_scale = 1.1;
+	float cur_scale = 1.3;
+	cv::Mat rot_matrix = cv::getRotationMatrix2D(cv::Point2f(cx, cy), 7.6, cur_scale);
 	rot_matrix.convertTo(rot_matrix, CV_32F);
-	rot_matrix.at<float>(0, 2) += sz * cur_scale * 0.5 - cx;
-	rot_matrix.at<float>(1, 2) += sz * cur_scale * 0.5 - cy;
+	rot_matrix.at<float>(0, 2) += window_sz * last_scale * 0.5 - cx;
+	rot_matrix.at<float>(1, 2) += window_sz * last_scale * 0.5 - cy;
 
-	cv::warpAffine(image, img2, rot_matrix, cv::Size(sz*cur_scale, sz*cur_scale));
-	cv::resize(img2, img2, cv::Size(sz, sz));
-	cv::blur(img2, img2, cv::Size(5, 5));
-	cv::Mat mask(20, 60, CV_8UC3, cv::Scalar(0));
-	mask.copyTo(img2(cv::Rect(10, 40, mask.cols, mask.rows)));
+	cv::warpAffine(image, img2, rot_matrix, cv::Size(window_sz*last_scale,window_sz*last_scale));
+	cv::resize(img2, img2, cv::Size(sz, sz));	//cannot resize
+	//cv::blur(img2, img2, cv::Size(5, 5));
+	//cv::Mat mask(20, 60, CV_8UC3, cv::Scalar(0));
+	//mask.copyTo(img2(cv::Rect(10, 40, mask.cols, mask.rows)));
 	cv::imshow("img1", img1);
 	cv::imshow("img2", img2);
 
@@ -170,9 +175,15 @@ void testPhaseCorrelation() {
 		x1 = getHistFeatures(log1, size);
 		x2 = getHistFeatures(log2, size);
 	}
+	float _scale = 2.0;
 	cv::Mat rf=phaseCorrelation(x1, x2, size[0], size[1], size[2]);
 	cv::Mat res = fftd(rf, true);
 	rearrange(res);
+	
+	cv::resize(res, res, cv::Size(0, 0), _scale, _scale, cv::INTER_LINEAR);
+
+	size[0] *= _scale;
+	size[1] *= _scale;
 	cv::Rect center(5, 5, size[1] - 10, size[0] - 10);
 	res = res(center);
 	cv::Point2i pi;
@@ -191,13 +202,17 @@ void testPhaseCorrelation() {
 	pi.y += 5;
 	pi.x -= size[1]*0.5;
 	pi.y -= size[0]*0.5;
+
+	pi.x /= _scale;
+	pi.y /= _scale;
+	size[1] /= _scale;
 	float rot = -(pi.y) * 180.0 / (size[1] * 0.5);
 	float scale = exp((pi.x)/mag);
 
-	cout << "rot: " << rot << ", scale: " << scale*cur_scale << endl;
+	cout << "rot: " << rot << ", scale: " << 1.0*last_scale*scale << endl;
 	cv::normalize(res, res, 0, 1, cv::NORM_MINMAX);
-	//cv::imshow("log1", log1);
-	//cv::imshow("log2", log2);
+	cv::imshow("log1", log1);
+	cv::imshow("log2", log2);
 	cv::imshow("res", res);
 	cv::waitKey();
 }

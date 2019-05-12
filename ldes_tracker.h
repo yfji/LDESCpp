@@ -21,6 +21,7 @@ public:
 	int cell_size_search;
 	int cell_sizeQ; // cell size^2, to avoid repeated operations
 	float padding; // extra area surrounding the target
+	float scale_padding;
 	float inter_patch_rate;
 	float color_update_rate;
 	float color_bins;
@@ -52,6 +53,7 @@ public:
 	int scale_sz;
 	int scale_sz0;
 	int scale_sz_window;	//resize to this size
+	float scale_base;
 
 	cv::Mat hann;
 	cv::Mat hann_search;
@@ -83,12 +85,11 @@ public:
 	cv::Mat getPixFeatures(const cv::Mat& patch, int* size);
 	float subPixelPeak(float left, float center, float right);
 	float calcPSR(const cv::Mat& res, cv::Point2i& peak_loc);
+	void updateModel(cv::Mat& image, int polish);	//MATLAB code
 
 protected:
 	void estimateLocation(cv::Mat& z, cv::Mat x);
-	void estimateScale(cv::Mat& z, cv::Mat& x);
-
-	void updateModel(cv::Mat& image, int polish);	//MATLAB code
+	void estimateScale(cv::Mat& z, cv::Mat& x);	
 
 	void trainLocation(cv::Mat& x, float train_interp_factor);
 	void trainScale(cv::Mat& x, float train_interp_factor);
@@ -125,4 +126,5 @@ private:
 	bool _hogfeatures;
 	bool _labfeatures;
 	bool _rotation;
+	bool _scale_hog;
 };
