@@ -94,7 +94,7 @@ cv::Mat phaseCorrelation(cv::Mat& x1, cv::Mat& x2, int h, int w, int channel) {
 	for (int i = 0; i < channel; i++) {
 		x = x1.row(i).reshape(1, h);;
 		y = x2.row(i).reshape(1, h);
-		cv::mulSpectrums(fftd(y), fftd(x), xy_temp, 0, true);
+		cv::mulSpectrums(fftd(x), fftd(y), xy_temp, 0, true);
 		cv::mulSpectrums(xy_temp, xy_temp, d, 0, true);
 		cv::sqrt(real(d), d);
 		d += 2.2204e-16;

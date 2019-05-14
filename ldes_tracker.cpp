@@ -85,14 +85,14 @@ void LDESTracker::init(const cv::Rect &roi, cv::Mat image) {
 	train_interp_factor = 0.012;
 	interp_factor_scale = 0.015;
 
-	_rotation = 0;
+	_rotation = 1;
 	getTemplates(image);
 }
 
 void LDESTracker::getSubWindow(const cv::Mat& image, const char* type) {
 	if (strcmp(type, "loc") == 0) {
 		if (_rotation) {
-			patch = cropImageAffine(image, cur_pos, window_sz0, cur_scale, cur_rot_degree);
+			patch = cropImageAffine(image, cur_pos, window_sz, window_sz0, cur_scale, cur_rot_degree);
 		}
 		else {
 			int win = (int)(window_sz*cur_scale);
@@ -103,7 +103,7 @@ void LDESTracker::getSubWindow(const cv::Mat& image, const char* type) {
 	}
 	else if (strcmp(type, "srch") == 0) {
 		if (_rotation) {
-			patchS = cropImageAffine(image, cur_pos, window_sz_search, cur_scale, cur_rot_degree);
+			patchS = cropImageAffine(image, cur_pos, window_sz_search, window_sz_search0, cur_scale, cur_rot_degree);
 		}
 		else {
 			int win = (int)(window_sz_search*cur_scale);
@@ -113,17 +113,19 @@ void LDESTracker::getSubWindow(const cv::Mat& image, const char* type) {
 	}
 	else if (strcmp(type, "scale") == 0) {
 		if (_rotation) {
-			patchL = cropImageAffine(image, cur_pos, scale_sz, cur_scale, cur_rot_degree);
+			patchL = cropImageAffine(image, cur_pos, scale_sz, scale_sz0, cur_scale, cur_rot_degree);
 		}
 		else {
 			int win = (int)(scale_sz*cur_scale);
 			patchL = cropImage(image, cur_pos, win);
-			
+
 			cv::resize(patchL, patchL, cv::Size(scale_sz0, scale_sz0), cv::INTER_LINEAR);
-			cv::logPolar(patchL, patchL, cv::Point2f(0.5*patchL.cols, 0.5*patchL.rows), mag, cv::INTER_LINEAR);			
+			cv::logPolar(patchL, patchL, cv::Point2f(0.5*patchL.cols, 0.5*patchL.rows), mag, cv::INTER_LINEAR);
 			cv::imshow("patchL", patchL);
 		}
 	}
+	else
+		assert(0);
 }
 	
 void LDESTracker::getTemplates(const cv::Mat& image) {
@@ -201,7 +203,7 @@ cv::Mat LDESTracker::cropImage(const cv::Mat& image, const cv::Point2i& pos, int
 	return patch;
 }
 
-cv::Mat LDESTracker::cropImageAffine(const cv::Mat& image, const cv::Point2i& pos, int sz, float scale, float rot) {
+cv::Mat LDESTracker::cropImageAffine(const cv::Mat& image, const cv::Point2i& pos, int sz, int resize_sz, float scale, float rot) {
 	cv::Mat rot_matrix = cv::getRotationMatrix2D(pos, -rot, scale);
 	rot_matrix.convertTo(rot_matrix, CV_32F);
 	cv::transpose(rot_matrix, rot_matrix);
@@ -224,22 +226,27 @@ cv::Mat LDESTracker::cropImageAffine(const cv::Mat& image, const cv::Point2i& po
 	cv::Mat padded = padImage(image, ix1, iy1, ix2, iy2);
 
 	cv::Point2i p(pos.x + ix1, pos.y + iy1);
+
 	rot_matrix = cv::getRotationMatrix2D(p, -rot, 1.0 / scale);
 	rot_matrix.convertTo(rot_matrix, CV_32F);
-	cv::Mat M1 = cv::Mat::zeros(3, 3, CV_32F);
-	M1.at<float>(2, 2) = 1.0;
-	rot_matrix.copyTo(M1(cv::Rect(0, 0, 3, 2)));
+	rot_matrix.at<float>(0, 2) += sz * scale * 0.5 - pos.x;
+	rot_matrix.at<float>(1, 2) += sz * scale * 0.5 - pos.y;
+	//cv::Mat M1 = cv::Mat::zeros(3, 3, CV_32F);
+	//M1.at<float>(2, 2) = 1.0;
+	//rot_matrix.copyTo(M1(cv::Rect(0, 0, 3, 2)));
 
-	float shift_ptr[6] = {
-		1.0,0,sz / 2 - p.x,
-		0,1.0,sz / 2 - p.y
-	};
-	cv::Mat shift(2, 3, CV_32F, shift_ptr);
-	cv::Mat M = shift * M1;
+	//float shift_ptr[6] = {
+	//	1.0,0,sz / 2 - p.x,
+	//	0,1.0,sz / 2 - p.y
+	//};
+	//cv::Mat shift(2, 3, CV_32F, shift_ptr);
+	//cv::Mat M = shift * M1;
 
 	cv::Mat patch;
-	cv::warpAffine(padded, patch, M, cv::Size(sz,sz));
-
+	cv::warpAffine(padded, patch, rot_matrix, cv::Size(sz*scale,sz*scale));
+	cv::imshow("rot_patch", patch);
+	cv::resize(patch, patch, cv::Size(resize_sz, resize_sz), cv::INTER_LINEAR);
+	
 	return patch;
 }
 
@@ -290,7 +297,7 @@ void LDESTracker::estimateLocation(cv::Mat& z, cv::Mat x)
 }
 
 void LDESTracker::estimateScale(cv::Mat& z, cv::Mat& x) {
-	cv::Mat rf = phaseCorrelation(z, x, size_scale[0], size_scale[1], size_scale[2]);
+	cv::Mat rf = phaseCorrelation(x, z, size_scale[0], size_scale[1], size_scale[2]);
 	cv::Mat res = fftd(rf, true);
 	rearrange(res);
 	cv::Mat resmap;
@@ -317,7 +324,7 @@ void LDESTracker::estimateScale(cv::Mat& z, cv::Mat& x) {
 	size_scale[0] /= _upsample;
 	size_scale[1] /= _upsample;
 
-	float rot = -(pi.y) * 180.0 / (size_scale[1] * 0.5);
+	float rot = -(pi.y) * 180.0 / (size_scale[0] * 0.5);
 	float scale = exp((pi.x) / mag);
 
 	sscore = static_cast<float>(pv);
@@ -383,8 +390,9 @@ void LDESTracker::updateModel(cv::Mat& image, int polish) {
 
 		estimateScale(modelPatch, xl);
 		
-		delta_scale = MIN(delta_scale, 1.2);
-		delta_scale = MAX(delta_scale, 0.8);
+		delta_scale = MAX(MIN(delta_scale, 1.2), 0.8);
+		delta_rot = MAX(MIN(delta_rot, 6), -6);
+
 		cur_rot_degree += delta_rot;
 		cur_scale *= delta_scale;
 
@@ -403,8 +411,8 @@ void LDESTracker::updateModel(cv::Mat& image, int polish) {
 			xl = getPixFeatures(patchL, size_scale);
 		else
 			xl = getFeatures(patchL, empty_, size_scale);
+		
 		trainLocation(x, train_interp_factor);
-		//trainScale(xl, 0.01);
 		trainScale(xl, interp_factor_scale);
 	}
 	else {

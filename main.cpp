@@ -18,8 +18,8 @@ cv::Rect get_groundtruth(string& line);
 
 int main()
 {
-	//testPhaseCorrelation();
-	testLDES();
+	testPhaseCorrelation();
+	//testLDES();
 	//testKCF();
 	return 0;
 }
@@ -102,7 +102,7 @@ void testLDES() {
 		cv::rectangle(image, new_pos, cv::Scalar(0, 0, 255), 2);
 		cv::circle(image, tracker.cur_pos, 3, cv::Scalar(0, 255, 0), -1);
 		cv::imshow("trackLDES", image);
-		if (cv::waitKey(1) == 27)
+		if (cv::waitKey() == 27)
 			break;
 	}
 }
@@ -140,8 +140,8 @@ void testPhaseCorrelation() {
 	cv::resize(img1, img1, cv::Size(sz, sz));
 
 	float last_scale = 1.1;
-	float cur_scale = 0.85;
-	cv::Mat rot_matrix = cv::getRotationMatrix2D(cv::Point2f(cx, cy), -27.6, cur_scale);
+	float cur_scale = 1.2;
+	cv::Mat rot_matrix = cv::getRotationMatrix2D(cv::Point2f(cx, cy), 18, cur_scale);
 	rot_matrix.convertTo(rot_matrix, CV_32F);
 	rot_matrix.at<float>(0, 2) += window_sz * last_scale * 0.5 - cx;
 	rot_matrix.at<float>(1, 2) += window_sz * last_scale * 0.5 - cy;
@@ -177,7 +177,7 @@ void testPhaseCorrelation() {
 		x2 = getHistFeatures(log2, size);
 	}
 	float _scale = 2.0;
-	cv::Mat rf=phaseCorrelation(x1, x2, size[0], size[1], size[2]);
+	cv::Mat rf=phaseCorrelation(x2, x1, size[0], size[1], size[2]);
 	cv::Mat res = fftd(rf, true);
 	rearrange(res);
 	
@@ -186,7 +186,7 @@ void testPhaseCorrelation() {
 	size[0] *= _scale;
 	size[1] *= _scale;
 	cv::Rect center(5, 5, size[1] - 10, size[0] - 10);
-	res = res(center);
+	res = res(center).clone();
 	cv::Point2i pi;
 	
 	double pv;
@@ -199,18 +199,19 @@ void testPhaseCorrelation() {
 	//if (pi.y > 1 && pi.y < res.rows - 1) {
 	//	pi.y += tracker.subPixelPeak(res.at<float>(pi.y - 1, pi.x), pv, res.at<float>(pi.y + 1, pi.x));
 	//}
-	pi.x += 5;
-	pi.y += 5;
-	pi.x -= size[1]*0.5;
-	pi.y -= size[0]*0.5;
+	float px = pi.x*1.0, py = pi.y*1.0;
+	px += 5;
+	py += 5;
+	px -= size[1]*0.5;	//size: hw
+	py -= size[0]*0.5;
 
-	pi.x /= _scale;
-	pi.y /= _scale;
-	size[1] /= _scale;
-	float rot = -(pi.y) * 180.0 / (size[1] * 0.5);
-	float scale = exp((pi.x)/mag);
+	px /= _scale;
+	py /= _scale;
+	size[0] /= _scale;
+	float rot = -py* 180.0 / (size[0] * 0.5);
+	float scale = exp((px)/mag);
 
-	cout << "rot: " << rot << ", scale: " << 1.0*last_scale*scale << endl;
+	cout << "py: "<<py<<", rot: " << rot << ", scale: " << 1.0*last_scale*scale << endl;
 	cv::normalize(res, res, 0, 1, cv::NORM_MINMAX);
 	cv::imshow("log1", log1);
 	cv::imshow("log2", log2);
