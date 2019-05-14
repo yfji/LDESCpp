@@ -290,7 +290,7 @@ void LDESTracker::estimateLocation(cv::Mat& z, cv::Mat x)
 }
 
 void LDESTracker::estimateScale(cv::Mat& z, cv::Mat& x) {
-	cv::Mat rf = phaseCorrelation(x, z, size_scale[0], size_scale[1], size_scale[2]);
+	cv::Mat rf = phaseCorrelation(z, x, size_scale[0], size_scale[1], size_scale[2]);
 	cv::Mat res = fftd(rf, true);
 	rearrange(res);
 	cv::Mat resmap;
@@ -380,10 +380,11 @@ void LDESTracker::updateModel(cv::Mat& image, int polish) {
 			xl= getPixFeatures(patchL, size_scale);
 		else
 			xl = getFeatures(patchL, empty_, size_scale);
+
 		estimateScale(modelPatch, xl);
 		
-		delta_scale = MIN(delta_scale, 1.06);
-		delta_scale = MAX(delta_scale, 0.95);
+		delta_scale = MIN(delta_scale, 1.2);
+		delta_scale = MAX(delta_scale, 0.8);
 		cur_rot_degree += delta_rot;
 		cur_scale *= delta_scale;
 
@@ -403,9 +404,8 @@ void LDESTracker::updateModel(cv::Mat& image, int polish) {
 		else
 			xl = getFeatures(patchL, empty_, size_scale);
 		trainLocation(x, train_interp_factor);
-		if(delta_scale!=1)
-			trainScale(xl, 0.21);
-		//trainScale(xl, interp_factor_scale);
+		//trainScale(xl, 0.01);
+		trainScale(xl, interp_factor_scale);
 	}
 	else {
 		w_sz0 = window_sz_search0;

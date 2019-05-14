@@ -36,8 +36,8 @@ cv::Rect get_groundtruth(string& line) {
 }
 
 void testKCF() {
-	string img_file = "J:/Dataset/OTB100/Mhyang.txt";
-	string label_file = "J:/Dataset/OTB100/Mhyang_label.txt";
+	string img_file = "D:/Dataset/OTB100/Mhyang.txt";
+	string label_file = "D:/Dataset/OTB100/Mhyang_label.txt";
 	LDESTracker tracker;
 
 	ifstream fin, lfin;
@@ -72,8 +72,8 @@ void testKCF() {
 }
 
 void testLDES() {
-	string img_file = "J:/Dataset/OTB100/Mhyang.txt";
-	string label_file = "J:/Dataset/OTB100/Mhyang_label.txt";
+	string img_file = "D:/Dataset/OTB100/Mhyang.txt";
+	string label_file = "D:/Dataset/OTB100/Mhyang_label.txt";
 	LDESTracker tracker;
 
 	ifstream fin, lfin;
@@ -100,6 +100,7 @@ void testLDES() {
 		++frameIndex;
 
 		cv::rectangle(image, new_pos, cv::Scalar(0, 0, 255), 2);
+		cv::circle(image, tracker.cur_pos, 3, cv::Scalar(0, 255, 0), -1);
 		cv::imshow("trackLDES", image);
 		if (cv::waitKey(1) == 27)
 			break;
@@ -131,7 +132,7 @@ void testPhaseCorrelation() {
 
 	cv::Rect window(cx - window_sz / 2, cy - window_sz / 2, window_sz, window_sz);
 
-	string img1_path = "I:/Develop/OpenCV/LDESTracker/LDESTracker/0001.jpg";
+	string img1_path = "./0001.jpg";
 
 	cv::Mat image = cv::imread(img1_path);
 	cv::Mat img1 = image(window).clone();
@@ -139,8 +140,8 @@ void testPhaseCorrelation() {
 	cv::resize(img1, img1, cv::Size(sz, sz));
 
 	float last_scale = 1.1;
-	float cur_scale = 1.3;
-	cv::Mat rot_matrix = cv::getRotationMatrix2D(cv::Point2f(cx, cy), 7.6, cur_scale);
+	float cur_scale = 0.85;
+	cv::Mat rot_matrix = cv::getRotationMatrix2D(cv::Point2f(cx, cy), -27.6, cur_scale);
 	rot_matrix.convertTo(rot_matrix, CV_32F);
 	rot_matrix.at<float>(0, 2) += window_sz * last_scale * 0.5 - cx;
 	rot_matrix.at<float>(1, 2) += window_sz * last_scale * 0.5 - cy;
