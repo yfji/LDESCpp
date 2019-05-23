@@ -15,7 +15,7 @@ cv::Mat gaussianCorrelation(cv::Mat& x1, cv::Mat& x2, int h, int w, int channel,
 		yy += cv::norm(y)*cv::norm(y) ;
 		cv::mulSpectrums(fftd(x), fftd(y), xy_temp, 0, true);
 		xy_temp = fftd(xy_temp, true);
-		//rearrange(xy_temp);	//rearange or not? Doesn't matter
+		rearrange(xy_temp);	//rearange or not? Doesn't matter
 		xy_temp.convertTo(xy_temp, CV_32F);
 		xy += xy_temp;
 	}

@@ -14,17 +14,17 @@ void testKCF();
 void testLDES();
 void testPhaseCorrelation();
 
-cv::Rect get_groundtruth(string& line);
+cv::Rect get_groundtruth(string& line, int& start);
 
 int main()
 {
-	testPhaseCorrelation();
-	//testLDES();
+	//testPhaseCorrelation();
+	testLDES();
 	//testKCF();
 	return 0;
 }
 
-cv::Rect get_groundtruth(string& line) {
+cv::Rect get_groundtruth(string& line, int& start) {
 	std::stringstream ss;
 	ss << line;
 	string s;
@@ -32,7 +32,13 @@ cv::Rect get_groundtruth(string& line) {
 	while (std::getline(ss, s, ',')) {
 		v.push_back(atoi(s.c_str()));
 	}
-	return cv::Rect(v[0], v[1], v[2], v[3]);
+	if (v.size() == 5) {
+		if(start==-1)
+			start = (int)v[0];
+		return cv::Rect(v[1], v[2], v[3], v[4]);
+	}
+	else
+		return cv::Rect(v[0], v[1], v[2], v[3]);
 }
 
 void testKCF() {
@@ -46,6 +52,7 @@ void testKCF() {
 
 	int frameIndex = 0;
 	cv::Rect new_pos;
+	int start = -1;
 	while (!fin.eof()) {
 		string filename, gt;
 		getline(fin, filename);
@@ -54,7 +61,7 @@ void testKCF() {
 			continue;
 
 		cv::Mat image = cv::imread(filename);
-		cv::Rect position = get_groundtruth(gt);
+		cv::Rect position = get_groundtruth(gt, start);
 		if (frameIndex == 0){
 			new_pos = tracker.testKCFTracker(image, position, true);
 			new_pos = position;
@@ -72,8 +79,10 @@ void testKCF() {
 }
 
 void testLDES() {
-	string img_file = "D:/Dataset/OTB100/Mhyang.txt";
-	string label_file = "D:/Dataset/OTB100/Mhyang_label.txt";
+	//string img_file = "J:/Dataset/OTB100/Toy.txt";
+	//string label_file = "J:/Dataset/OTB100/Toy_label.txt";
+	string img_file = "J:/Dataset/tracking-traffic/annotations_otb/avi_4.txt";
+	string label_file = "J:/Dataset/tracking-traffic/annotations_otb/avi_4/target_7.txt";
 	LDESTracker tracker;
 
 	ifstream fin, lfin;
@@ -82,13 +91,17 @@ void testLDES() {
 
 	int frameIndex = 0;
 	cv::Rect new_pos;
-	while (!fin.eof()) {
+	int start = -1;
+	while (!lfin.eof()) {
 		string filename, gt;
 		getline(fin, filename);
 		getline(lfin, gt);
 
 		cv::Mat image = cv::imread(filename);
-		cv::Rect position = get_groundtruth(gt);
+		cv::Rect position = get_groundtruth(gt, start);
+		if (start >= 1 && frameIndex < start - 1) {
+			continue;
+		}
 		if (frameIndex == 0) {
 			tracker.init(position, image);
 			new_pos = position;
@@ -123,7 +136,7 @@ cv::Mat getHistFeatures(cv::Mat& img, int* size) {
 void testPhaseCorrelation() {
 	cv::Rect roi(84, 53, 62, 70);
 	LDESTracker tracker;
-	float padding = 2.5;
+	float padding = 1.5;
 	int sz = 120;
 
 	int window_sz = static_cast<int>(sqrt(roi.area())*padding);
@@ -141,7 +154,7 @@ void testPhaseCorrelation() {
 
 	float last_scale = 1.1;
 	float cur_scale = 1.2;
-	cv::Mat rot_matrix = cv::getRotationMatrix2D(cv::Point2f(cx, cy), 18, cur_scale);
+	cv::Mat rot_matrix = cv::getRotationMatrix2D(cv::Point2f(cx, cy), 20.5, cur_scale);
 	rot_matrix.convertTo(rot_matrix, CV_32F);
 	rot_matrix.at<float>(0, 2) += window_sz * last_scale * 0.5 - cx;
 	rot_matrix.at<float>(1, 2) += window_sz * last_scale * 0.5 - cy;
@@ -176,38 +189,31 @@ void testPhaseCorrelation() {
 		x1 = getHistFeatures(log1, size);
 		x2 = getHistFeatures(log2, size);
 	}
-	float _scale = 2.0;
 	cv::Mat rf=phaseCorrelation(x2, x1, size[0], size[1], size[2]);
 	cv::Mat res = fftd(rf, true);
 	rearrange(res);
 	
-	cv::resize(res, res, cv::Size(0, 0), _scale, _scale, cv::INTER_LINEAR);
-
-	size[0] *= _scale;
-	size[1] *= _scale;
 	cv::Rect center(5, 5, size[1] - 10, size[0] - 10);
 	res = res(center).clone();
 	cv::Point2i pi;
 	
 	double pv;
 	cv::minMaxLoc(res, NULL, &pv, NULL, &pi);
-	// More precise without subpixel!!
-	//if(pi.x > 1 && pi.x < res.cols - 1) {
-	//	pi.x += tracker.subPixelPeak(res.at<float>(pi.y, pi.x - 1), pv, res.at<float>(pi.y, pi.x + 1));
-	//}
 
-	//if (pi.y > 1 && pi.y < res.rows - 1) {
-	//	pi.y += tracker.subPixelPeak(res.at<float>(pi.y - 1, pi.x), pv, res.at<float>(pi.y + 1, pi.x));
-	//}
-	float px = pi.x*1.0, py = pi.y*1.0;
-	px += 5;
-	py += 5;
-	px -= size[1]*0.5;	//size: hw
-	py -= size[0]*0.5;
+	pi.x += 5;
+	pi.y += 5;
 
-	px /= _scale;
-	py /= _scale;
-	size[0] /= _scale;
+	float px = pi.x, py = pi.y;
+	if (px > 0 && px < res.cols - 1) {
+		px += tracker.subPixelPeak(res.at<float>(py, px - 1), pv, res.at<float>(py, px + 1));
+	}
+
+	if (py > 0 && py < res.rows - 1) {
+		py += tracker.subPixelPeak(res.at<float>(py - 1, px), pv, res.at<float>(py + 1, px));
+	}
+
+	px -= size[1] * 0.5;
+	py -= size[0] * 0.5;
 	float rot = -py* 180.0 / (size[0] * 0.5);
 	float scale = exp((px)/mag);
 

@@ -18,8 +18,8 @@ public:
 	float sigma; // gaussian kernel bandwidth
 	float lambda; // regularization
 	int cell_size; // HOG cell size
-	int cell_size_search;
 	int cell_sizeQ; // cell size^2, to avoid repeated operations
+	int cell_size_scale;
 	float padding; // extra area surrounding the target
 	float scale_padding;
 	float inter_patch_rate;
@@ -27,7 +27,7 @@ public:
 	float color_bins;
 	float merge_factor;
 	float output_sigma_factor; // bandwidth of gaussian target
-	int template_sz; // template size
+	int template_size; // template size
 
 	float scale_step; // scale step for multi-scale estimation
 	float scale_weight;  // to downweight detection scores of other scales for added stability
@@ -43,24 +43,13 @@ public:
 	int window_sz;
 	int window_sz0;
 
-	int window_sz_search;
-	int window_sz_search0;
-
-	int feature_sz;
-	int feature_sz0;
-	int feature_size_search;
-
 	int scale_sz;
 	int scale_sz0;
-	int scale_sz_window;	//resize to this size
 	float scale_base;
 
 	cv::Mat hann;
-	cv::Mat hann_search;
-	cv::Mat hann_scale;
 
 	cv::Mat patch;
-	cv::Mat patchS;
 	cv::Mat patchL;
 
 	cv::Point2i cur_pos;
@@ -77,6 +66,8 @@ public:
 
 	float cur_rot_degree;
 	float cur_scale;
+	float _scale;
+	float _scale2;
 	float delta_rot;
 	float delta_scale;
 	float mag;
@@ -85,6 +76,7 @@ public:
 	cv::Mat getFeatures(const cv::Mat & patch, cv::Mat& han, int* sizes, bool inithann = false);
 	cv::Mat getPixFeatures(const cv::Mat& patch, int* size);
 	float subPixelPeak(float left, float center, float right);
+	void weightedPeak(cv::Mat& resmap, cv::Point2f& peak, int pad=2);
 	float calcPSR(const cv::Mat& res, cv::Point2i& peak_loc);
 	void updateModel(cv::Mat& image, int polish);	//MATLAB code
 
@@ -103,7 +95,7 @@ protected:
 
 	cv::Mat padImage(const cv::Mat& image, int& x1, int& y1, int& x2, int& y2);
 	cv::Mat cropImage(const cv::Mat& image, const cv::Point2i& pos, int sz);
-	cv::Mat cropImageAffine(const cv::Mat& image, const cv::Point2i& pos, int sz, int resize_sz, float scale, float rot);
+	cv::Mat cropImageAffine(const cv::Mat& image, const cv::Point2i& pos, int win_sz, float scale, float rot);
 	
 
 	cv::Mat hogFeatures;
@@ -122,7 +114,6 @@ private:
 	int size_patch[3];
 	int size_scale[3];
 	int size_search[3];
-	float _scale;
 	int _gaussian_size;
 	bool _hogfeatures;
 	bool _labfeatures;
