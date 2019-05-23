@@ -115,7 +115,7 @@ void testLDES() {
 		cv::rectangle(image, new_pos, cv::Scalar(0, 0, 255), 2);
 		cv::circle(image, tracker.cur_pos, 3, cv::Scalar(0, 255, 0), -1);
 		cv::imshow("trackLDES", image);
-		if (cv::waitKey() == 27)
+		if (cv::waitKey(1) == 27)
 			break;
 	}
 }

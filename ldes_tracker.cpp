@@ -218,17 +218,21 @@ void LDESTracker::estimateLocation(cv::Mat& z, cv::Mat x)
 	px -= res.cols/2;
 	py -= res.rows/2;
 	
-	//if (_rotation) {
-	//	float cs = cos(cur_rot_degree), sn = sin(cur_rot_degree);
-	//	float dx = cell_size * px*cs - cell_size * py*sn;
-	//	float dy = cell_size * px*sn + cell_size * py*cs;
-	//	cur_pos.x = MIN(round(cur_pos.x + dx), im_width - 1);
-	//	cur_pos.y = MIN(round(cur_pos.y + dy), im_height - 1);
-	//}
-	//else {
+	if (_rotation) {
+		float cs = cos(cur_rot_degree), sn = sin(cur_rot_degree);
+		float sc = cell_size * _scale;
+		float dx = sc * px*cs - sc * py*sn;
+		float dy = sc * px*sn + sc * py*cs;
+		cur_pos.x = MIN(round(cur_pos.x + dx), im_width - 1);
+		cur_pos.y = MIN(round(cur_pos.y + dy), im_height - 1);
+		//cur_pos.x = MIN(round(cur_pos.x + px * cell_size*_scale), im_width - 1);
+		//cur_pos.y = MIN(round(cur_pos.y + py * cell_size*_scale), im_height - 1);
+
+	}
+	else {
 		cur_pos.x = MIN(round(cur_pos.x + px * cell_size*_scale), im_width - 1);
 		cur_pos.y = MIN(round(cur_pos.y + py * cell_size*_scale), im_height - 1);
-	//}
+	}
 	//cout << cur_pos << endl;
 	cv::Mat resmap;
 	cv::normalize(res, resmap, 0, 1, cv::NORM_MINMAX);
@@ -239,13 +243,8 @@ void LDESTracker::estimateScale(cv::Mat& z, cv::Mat& x) {
 	cv::Mat rf = phaseCorrelation(x, z, size_scale[0], size_scale[1], size_scale[2]);
 	cv::Mat res = fftd(rf, true);
 	rearrange(res);
-	cv::Mat resmap;
-	float _upsample = 2.0;
-	cv::resize(res, res, cv::Size(0, 0), _upsample, _upsample, cv::INTER_LINEAR);
-	cv::normalize(res, resmap, 0, 1, cv::NORM_MINMAX);
-	cv::imshow("phase", resmap);
 
-	cv::Rect center(5, 5, size_scale[1] * _upsample - 10, size_scale[0] * _upsample - 10);
+	cv::Rect center(5, 5, size_scale[1] - 10, size_scale[0] - 10);
 	
 	res = res(center).clone();
 
@@ -253,7 +252,7 @@ void LDESTracker::estimateScale(cv::Mat& z, cv::Mat& x) {
 	double pv;
 	cv::minMaxLoc(res, NULL, &pv, NULL, &pi);
 
-	cv::Point2f pf(pi.x, pi.y);
+	cv::Point2f pf(pi.x + 5, pi.y + 5);
 	//weightedPeak(res, pf, 1);
 	if (pi.x > 0 && pi.x < res.cols - 1) {
 		pf.x += subPixelPeak(res.at<float>(pi.y, pi.x - 1), pv, res.at<float>(pi.y, pi.x + 1));
@@ -264,15 +263,13 @@ void LDESTracker::estimateScale(cv::Mat& z, cv::Mat& x) {
 	}
 
 	float px = pf.x, py = pf.y;
-
-	px = (px + 5) / _upsample;
-	py = (py + 5) / _upsample;
 	
 	px -= size_scale[1] * 0.5;
 	py -= size_scale[0] * 0.5;
 
-	px *= cell_size_scale;
-	py *= cell_size_scale;
+	//px *= cell_size_scale;
+	//py *= cell_size_scale;
+
 	float rot = -(py) * 180.0 / (size_scale[0] * 0.5);
 	float scale = exp((px) / mag);
 
@@ -283,6 +280,10 @@ void LDESTracker::estimateScale(cv::Mat& z, cv::Mat& x) {
 	if (abs(delta_rot) >1)
 		delta_rot = 0;
 	delta_scale = MIN(MAX(delta_scale, 0.8), 1.2);
+
+	cv::Mat resmap;
+	cv::normalize(res, resmap, 0, 1, cv::NORM_MINMAX);
+	cv::imshow("phase", resmap);
 }
 
 void LDESTracker::update(cv::Mat image) {
