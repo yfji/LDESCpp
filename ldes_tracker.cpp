@@ -9,7 +9,7 @@ LDESTracker::LDESTracker()
 
 	_hogfeatures = true;
 	_rotation = true;
-	_scale_hog = false;
+	_scale_hog = true;
 	_rotation = 1;
 
 	interp_factor = 0.012;
@@ -32,7 +32,6 @@ void LDESTracker::init(const cv::Rect &roi, cv::Mat image) {
 	cell_size = 4;
 	cell_size_scale = _scale_hog ? 4 : 1;
 	target_sz = roi.size();
-	cur_position = _roi;
 	cur_rot_degree = 0.;
 	template_size = 96;
 	scale_sz0 = 120;
@@ -45,7 +44,8 @@ void LDESTracker::init(const cv::Rect &roi, cv::Mat image) {
 	cur_scale = 1.0;
 
 	//for cropping, then resize to window_sz0
-	int padded_sz = static_cast<int>(sqrt(target_sz.area())*padding);	
+	//int padded_sz = static_cast<int>(sqrt(target_sz.area())*padding);	
+	int padded_sz = (int)(MAX(target_sz.width, target_sz.height)*padding);
 	_scale = 1.0*padded_sz / template_size;
 	window_sz0 = padded_sz / _scale;
 	window_sz0 = window_sz0 / (2 * cell_size)*(2 * cell_size) + 2 * cell_size;
@@ -62,21 +62,21 @@ void LDESTracker::init(const cv::Rect &roi, cv::Mat image) {
 void LDESTracker::getSubWindow(const cv::Mat& image, const char* type) {
 	if (strcmp(type, "loc") == 0) {
 		if (_rotation) {
-			patch = cropImageAffine(image, cur_pos, window_sz0, cur_scale, cur_rot_degree);
+			patch = cropImageAffine(image, cur_pos, window_sz0*_scale, cur_rot_degree);
 		}
 		else {
 			int win = (int)(window_sz0*_scale);
 			patch = cropImage(image, cur_pos, win);
 		}
-		cv::imshow("patch", patch);
+		//cv::imshow("patch", patch);
 		cv::resize(patch, patch, cv::Size(window_sz0, window_sz0), cv::INTER_LINEAR);
 	}
 	else if (strcmp(type, "scale") == 0) {
 		if (_rotation) {
-			patchL = cropImageAffine(image, cur_pos, scale_sz0, cur_scale, cur_rot_degree);
+			patchL = cropImageAffine(image, cur_pos, scale_sz0*_scale2, cur_rot_degree);
 		}
 		else {
-			int win = (int)(scale_sz0*_scale);
+			int win = (int)(scale_sz0*_scale2);
 			patchL = cropImage(image, cur_pos, win);
 		}
 		cv::imshow("rot_patch", patchL);
@@ -92,7 +92,6 @@ void LDESTracker::getTemplates(const cv::Mat& image) {
 	getSubWindow(image, "loc");
 	getSubWindow(image, "scale");
 
-	cv::imshow("template", patch);
 	cv::Mat empty_;
 	cv::Mat x = getFeatures(patch, hann, size_patch, true);
 	cv::Mat xl;
@@ -159,8 +158,9 @@ cv::Mat LDESTracker::cropImage(const cv::Mat& image, const cv::Point2i& pos, int
 	return patch;
 }
 
-cv::Mat LDESTracker::cropImageAffine(const cv::Mat& image, const cv::Point2i& pos, int win_sz, float scale, float rot) {
-	cv::Mat rot_matrix = cv::getRotationMatrix2D(pos, -rot, scale);
+cv::Mat LDESTracker::cropImageAffine(const cv::Mat& image, const cv::Point2i& pos, int win_sz, float rot) {
+	//cv::Mat rot_matrix = cv::getRotationMatrix2D(pos, -rot, scale);
+	cv::Mat rot_matrix = cv::getRotationMatrix2D(pos, -rot, 1);
 	rot_matrix.convertTo(rot_matrix, CV_32F);
 	cv::transpose(rot_matrix, rot_matrix);
 
@@ -183,13 +183,16 @@ cv::Mat LDESTracker::cropImageAffine(const cv::Mat& image, const cv::Point2i& po
 
 	cv::Point2i p(pos.x + ix1, pos.y + iy1);
 
-	rot_matrix = cv::getRotationMatrix2D(p, -rot, scale);
+	//rot_matrix = cv::getRotationMatrix2D(p, -rot, scale);
+	rot_matrix = cv::getRotationMatrix2D(p, -rot, 1);
+
 	rot_matrix.convertTo(rot_matrix, CV_32F);
-	rot_matrix.at<float>(0, 2) += win_sz * scale * 0.5 - p.x;
-	rot_matrix.at<float>(1, 2) += win_sz * scale * 0.5 - p.y;
+	rot_matrix.at<float>(0, 2) += win_sz * 0.5 - p.x;
+	rot_matrix.at<float>(1, 2) += win_sz * 0.5 - p.y;
 
 	cv::Mat patch;
-	cv::warpAffine(padded, patch, rot_matrix, cv::Size(win_sz*scale, win_sz*scale));
+	//cv::warpAffine(padded, patch, rot_matrix, cv::Size(win_sz*scale, win_sz*scale));
+	cv::warpAffine(padded, patch, rot_matrix, cv::Size(win_sz, win_sz));
 	return patch;
 }
 
@@ -219,15 +222,15 @@ void LDESTracker::estimateLocation(cv::Mat& z, cv::Mat x)
 	py -= res.rows/2;
 	
 	if (_rotation) {
-		float cs = cos(cur_rot_degree), sn = sin(cur_rot_degree);
+		float cs = cos(delta_rot), sn = sin(delta_rot);
+		//float cs = cos(cur_rot_degree), sn = sin(cur_rot_degree);
 		float sc = cell_size * _scale;
 		float dx = sc * px*cs - sc * py*sn;
 		float dy = sc * px*sn + sc * py*cs;
-		cur_pos.x = MIN(round(cur_pos.x + dx), im_width - 1);
-		cur_pos.y = MIN(round(cur_pos.y + dy), im_height - 1);
-		//cur_pos.x = MIN(round(cur_pos.x + px * cell_size*_scale), im_width - 1);
-		//cur_pos.y = MIN(round(cur_pos.y + py * cell_size*_scale), im_height - 1);
-
+		//cur_pos.x = MIN(round(cur_pos.x + dx), im_width - 1);
+		//cur_pos.y = MIN(round(cur_pos.y + dy), im_height - 1);
+		cur_pos.x = MIN(round(cur_pos.x + px * cell_size*_scale), im_width - 1);
+		cur_pos.y = MIN(round(cur_pos.y + py * cell_size*_scale), im_height - 1);
 	}
 	else {
 		cur_pos.x = MIN(round(cur_pos.x + px * cell_size*_scale), im_width - 1);
@@ -236,7 +239,7 @@ void LDESTracker::estimateLocation(cv::Mat& z, cv::Mat x)
 	//cout << cur_pos << endl;
 	cv::Mat resmap;
 	cv::normalize(res, resmap, 0, 1, cv::NORM_MINMAX);
-	cv::imshow("res", resmap);
+	//cv::imshow("res", resmap);
 }
 
 void LDESTracker::estimateScale(cv::Mat& z, cv::Mat& x) {
@@ -271,19 +274,19 @@ void LDESTracker::estimateScale(cv::Mat& z, cv::Mat& x) {
 	//py *= cell_size_scale;
 
 	float rot = -(py) * 180.0 / (size_scale[0] * 0.5);
-	float scale = exp((px) / mag);
+	float scale =  exp((px) / mag);
 
 	sscore = static_cast<float>(pv);
 
 	delta_rot = rot;
 	delta_scale = scale;
-	if (abs(delta_rot) >1)
+	if (abs(delta_rot) > 5)
 		delta_rot = 0;
-	delta_scale = MIN(MAX(delta_scale, 0.8), 1.2);
+	delta_scale = MIN(MAX(delta_scale, 0.6), 1.4);
 
 	cv::Mat resmap;
 	cv::normalize(res, resmap, 0, 1, cv::NORM_MINMAX);
-	cv::imshow("phase", resmap);
+	//cv::imshow("phase", resmap);
 }
 
 void LDESTracker::update(cv::Mat image) {
@@ -348,11 +351,14 @@ void LDESTracker::updateModel(cv::Mat& image, int polish) {
 
 		cur_scale *= delta_scale;
 		_scale *= delta_scale;
+		_scale2 *= delta_scale;
 
 		cout << "Cur scale: " << cur_scale <<" cur rotation:  "<<cur_rot_degree<<endl;
 		
-		cur_roi.width = round(cur_roi.width*delta_scale);
-		cur_roi.height = round(cur_roi.height*delta_scale);
+		cur_roi.width = round(target_sz.width*cur_scale);
+		cur_roi.height = round(target_sz.height*cur_scale);
+		//cur_roi.width = round(cur_roi.width*delta_scale);
+		//cur_roi.height = round(cur_roi.height*delta_scale);
 		cur_roi.x = round(cur_pos.x - cur_roi.width / 2);
 		cur_roi.y = round(cur_pos.y - cur_roi.height / 2);
 

@@ -15,6 +15,7 @@ void testLDES();
 void testPhaseCorrelation();
 
 cv::Rect get_groundtruth(string& line, int& start);
+std::vector<cv::Point2i> get_rotated_rect(cv::Rect& rec, float degree);
 
 int main()
 {
@@ -39,6 +40,28 @@ cv::Rect get_groundtruth(string& line, int& start) {
 	}
 	else
 		return cv::Rect(v[0], v[1], v[2], v[3]);
+}
+
+std::vector<cv::Point2i> get_rotated_rect(cv::Rect& rec, float degree) {
+	std::vector<cv::Point2i> rot_rect;
+	cv::Point2i center(rec.x + rec.width / 2, rec.y + rec.height / 2);
+	cv::Mat M = cv::getRotationMatrix2D(center, degree, 1);
+	M.convertTo(M, CV_32F);
+	float corners_ptr[12] = {
+		rec.x, rec.y, 1.0,\
+		rec.x, rec.y + rec.height - 1,1.0,\
+		rec.x + rec.width - 1, rec.y + rec.height - 1,1.0,\
+		rec.x + rec.width - 1, rec.y,1.0
+	};
+	cv::Mat corners(4, 3, CV_32F, corners_ptr);
+	cv::transpose(M, M);
+	cv::Mat wcorners = corners * M;	//4*2
+	float *data = (float*)wcorners.data;
+	for (int i = 0; i < 4; ++i) {
+		cv::Point2i p(data[2 * i], data[2 * i + 1]);
+		rot_rect.push_back(p);
+	}
+	return rot_rect;
 }
 
 void testKCF() {
@@ -71,7 +94,7 @@ void testKCF() {
 		}
 		++frameIndex;
 
-		cv::rectangle(image, new_pos, cv::Scalar(0, 0, 255), 2);
+		cv::rectangle(image, new_pos, cv::Scalar(0, 0, 255), 2);		
 		cv::imshow("trackKCF", image);
 		if (cv::waitKey(1) == 27)
 			break;
@@ -79,10 +102,10 @@ void testKCF() {
 }
 
 void testLDES() {
-	//string img_file = "J:/Dataset/OTB100/Toy.txt";
-	//string label_file = "J:/Dataset/OTB100/Toy_label.txt";
-	string img_file = "J:/Dataset/tracking-traffic/annotations_otb/avi_4.txt";
-	string label_file = "J:/Dataset/tracking-traffic/annotations_otb/avi_4/target_7.txt";
+	string img_file = "D:/Dataset/OTB100/Toy.txt";
+	string label_file = "D:/Dataset/OTB100/Toy_label.txt";
+	//string img_file = "J:/Dataset/tracking-traffic/annotations_otb/avi_4.txt";
+	//string label_file = "J:/Dataset/tracking-traffic/annotations_otb/avi_4/target_7.txt";
 	LDESTracker tracker;
 
 	ifstream fin, lfin;
@@ -91,6 +114,7 @@ void testLDES() {
 
 	int frameIndex = 0;
 	cv::Rect new_pos;
+	float rot_degree = 0;
 	int start = -1;
 	while (!lfin.eof()) {
 		string filename, gt;
@@ -109,13 +133,20 @@ void testLDES() {
 		else {
 			tracker.updateModel(image,0);
 			new_pos = tracker.cur_roi;
+			rot_degree = tracker.cur_rot_degree;
 		}
 		++frameIndex;
+		auto rot_rect = get_rotated_rect(new_pos, rot_degree);
 
 		cv::rectangle(image, new_pos, cv::Scalar(0, 0, 255), 2);
 		cv::circle(image, tracker.cur_pos, 3, cv::Scalar(0, 255, 0), -1);
+		for (int i = 0; i < 4; ++i) {
+			int  from = i;
+			int to = (i + 1) % 4;
+			cv::line(image, rot_rect[from], rot_rect[to], cv::Scalar(0, 255, 0), 1);
+		}
 		cv::imshow("trackLDES", image);
-		if (cv::waitKey(1) == 27)
+		if (cv::waitKey(20) == 27)
 			break;
 	}
 }

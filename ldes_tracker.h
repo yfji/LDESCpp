@@ -95,7 +95,7 @@ protected:
 
 	cv::Mat padImage(const cv::Mat& image, int& x1, int& y1, int& x2, int& y2);
 	cv::Mat cropImage(const cv::Mat& image, const cv::Point2i& pos, int sz);
-	cv::Mat cropImageAffine(const cv::Mat& image, const cv::Point2i& pos, int win_sz, float scale, float rot);
+	cv::Mat cropImageAffine(const cv::Mat& image, const cv::Point2i& pos, int win_sz, float rot);
 	
 
 	cv::Mat hogFeatures;
