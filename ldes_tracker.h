@@ -72,12 +72,17 @@ public:
 	float delta_scale;
 	float mag;
 
+	cv::Mat resmap_location;
+	float pv_location;
+	cv::Point2f peak_loc;
+
+
 	cv::Rect testKCFTracker(const cv::Mat& image, cv::Rect& rect, bool init = false);
 	cv::Mat getFeatures(const cv::Mat & patch, cv::Mat& han, int* sizes, bool inithann = false);
 	cv::Mat getPixFeatures(const cv::Mat& patch, int* size);
 	float subPixelPeak(float left, float center, float right);
 	void weightedPeak(cv::Mat& resmap, cv::Point2f& peak, int pad=2);
-	float calcPSR(const cv::Mat& res, cv::Point2i& peak_loc);
+	float calcPSR();
 	void updateModel(cv::Mat& image, int polish);	//MATLAB code
 
 protected:

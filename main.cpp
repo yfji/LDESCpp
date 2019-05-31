@@ -19,8 +19,8 @@ std::vector<cv::Point2i> get_rotated_rect(cv::Rect& rec, float degree);
 
 int main()
 {
-	//testPhaseCorrelation();
-	testLDES();
+	testPhaseCorrelation();
+	//testLDES();
 	//testKCF();
 	return 0;
 }
@@ -65,8 +65,8 @@ std::vector<cv::Point2i> get_rotated_rect(cv::Rect& rec, float degree) {
 }
 
 void testKCF() {
-	string img_file = "D:/Dataset/OTB100/Mhyang.txt";
-	string label_file = "D:/Dataset/OTB100/Mhyang_label.txt";
+	string img_file = "J:/Dataset/OTB100/Mhyang.txt";
+	string label_file = "J:/Dataset/OTB100/Mhyang_label.txt";
 	LDESTracker tracker;
 
 	ifstream fin, lfin;
@@ -87,14 +87,12 @@ void testKCF() {
 		cv::Rect position = get_groundtruth(gt, start);
 		if (frameIndex == 0){
 			new_pos = tracker.testKCFTracker(image, position, true);
-			new_pos = position;
 		}
 		else {
-			new_pos = tracker.testKCFTracker(image, new_pos, false);
+			new_pos = tracker.testKCFTracker(image, position, false);
 		}
 		++frameIndex;
-
-		cv::rectangle(image, new_pos, cv::Scalar(0, 0, 255), 2);		
+		cv::rectangle(image, new_pos, cv::Scalar(0, 255,0), 2);		
 		cv::imshow("trackKCF", image);
 		if (cv::waitKey(1) == 27)
 			break;
@@ -102,10 +100,10 @@ void testKCF() {
 }
 
 void testLDES() {
-	string img_file = "D:/Dataset/OTB100/Toy.txt";
-	string label_file = "D:/Dataset/OTB100/Toy_label.txt";
-	//string img_file = "J:/Dataset/tracking-traffic/annotations_otb/avi_4.txt";
-	//string label_file = "J:/Dataset/tracking-traffic/annotations_otb/avi_4/target_7.txt";
+	//string img_file = "J:/Dataset/OTB100/Toy.txt";
+	//string label_file = "J:/Dataset/OTB100/Toy_label.txt";
+	string img_file = "J:/Dataset/tracking-traffic/annotations_otb/avi_0.txt";
+	string label_file = "J:/Dataset/tracking-traffic/annotations_otb/avi_0/target_2.txt";
 	LDESTracker tracker;
 
 	ifstream fin, lfin;
@@ -146,7 +144,7 @@ void testLDES() {
 			cv::line(image, rot_rect[from], rot_rect[to], cv::Scalar(0, 255, 0), 1);
 		}
 		cv::imshow("trackLDES", image);
-		if (cv::waitKey(20) == 27)
+		if (cv::waitKey(1) == 27)
 			break;
 	}
 }

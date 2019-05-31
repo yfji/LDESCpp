@@ -10,7 +10,6 @@ LDESTracker::LDESTracker()
 	_hogfeatures = true;
 	_rotation = true;
 	_scale_hog = true;
-	_rotation = 1;
 
 	interp_factor = 0.012;
 	interp_n = 0.85;
@@ -79,10 +78,9 @@ void LDESTracker::getSubWindow(const cv::Mat& image, const char* type) {
 			int win = (int)(scale_sz0*_scale2);
 			patchL = cropImage(image, cur_pos, win);
 		}
-		cv::imshow("rot_patch", patchL);
+		//cv::imshow("rot_patch", patchL);
 		cv::resize(patchL, patchL, cv::Size(scale_sz0, scale_sz0), cv::INTER_LINEAR);
 		cv::logPolar(patchL, patchL, cv::Point2f(0.5*patchL.cols, 0.5*patchL.rows), mag, cv::INTER_LINEAR);
-		//cv::imshow("patchL", patchL);
 	}
 	else
 		assert(0);
@@ -205,8 +203,7 @@ void LDESTracker::estimateLocation(cv::Mat& z, cv::Mat x)
 	double pv;
 	cv::minMaxLoc(res, NULL, &pv, NULL, &pi);
 	float peak_value = (float)pv;
-	std::cout << pi.x << ',' << pi.y << ',' << pv << std::endl;
-	//cscore=calcPSR(res, pi);
+	//cscore=calcPSR();
 	cv::Point2f p((float)pi.x, (float)pi.y);
 
 	if (pi.x > 0 && pi.x < res.cols - 1) {
@@ -221,25 +218,9 @@ void LDESTracker::estimateLocation(cv::Mat& z, cv::Mat x)
 	px -= res.cols/2;
 	py -= res.rows/2;
 	
-	if (_rotation) {
-		float cs = cos(delta_rot), sn = sin(delta_rot);
-		//float cs = cos(cur_rot_degree), sn = sin(cur_rot_degree);
-		float sc = cell_size * _scale;
-		float dx = sc * px*cs - sc * py*sn;
-		float dy = sc * px*sn + sc * py*cs;
-		//cur_pos.x = MIN(round(cur_pos.x + dx), im_width - 1);
-		//cur_pos.y = MIN(round(cur_pos.y + dy), im_height - 1);
-		cur_pos.x = MIN(round(cur_pos.x + px * cell_size*_scale), im_width - 1);
-		cur_pos.y = MIN(round(cur_pos.y + py * cell_size*_scale), im_height - 1);
-	}
-	else {
-		cur_pos.x = MIN(round(cur_pos.x + px * cell_size*_scale), im_width - 1);
-		cur_pos.y = MIN(round(cur_pos.y + py * cell_size*_scale), im_height - 1);
-	}
-	//cout << cur_pos << endl;
-	cv::Mat resmap;
-	cv::normalize(res, resmap, 0, 1, cv::NORM_MINMAX);
-	//cv::imshow("res", resmap);
+	cur_pos.x = MIN(round(cur_pos.x + px * cell_size*_scale), im_width - 1);
+	cur_pos.y = MIN(round(cur_pos.y + py * cell_size*_scale), im_height - 1);
+	
 }
 
 void LDESTracker::estimateScale(cv::Mat& z, cv::Mat& x) {
@@ -269,7 +250,6 @@ void LDESTracker::estimateScale(cv::Mat& z, cv::Mat& x) {
 	
 	px -= size_scale[1] * 0.5;
 	py -= size_scale[0] * 0.5;
-
 	//px *= cell_size_scale;
 	//py *= cell_size_scale;
 
@@ -283,10 +263,6 @@ void LDESTracker::estimateScale(cv::Mat& z, cv::Mat& x) {
 	if (abs(delta_rot) > 5)
 		delta_rot = 0;
 	delta_scale = MIN(MAX(delta_scale, 0.6), 1.4);
-
-	cv::Mat resmap;
-	cv::normalize(res, resmap, 0, 1, cv::NORM_MINMAX);
-	//cv::imshow("phase", resmap);
 }
 
 void LDESTracker::update(cv::Mat image) {
@@ -347,14 +323,13 @@ void LDESTracker::updateModel(cv::Mat& image, int polish) {
 
 		estimateScale(modelPatch, xl);
 		
-		cur_rot_degree += delta_rot;
-
+		if (_rotation) {
+			cur_rot_degree += delta_rot;
+		}
 		cur_scale *= delta_scale;
 		_scale *= delta_scale;
 		_scale2 *= delta_scale;
-
-		cout << "Cur scale: " << cur_scale <<" cur rotation:  "<<cur_rot_degree<<endl;
-		
+		//cout << "Cur scale: " << cur_scale << " cur rotation:  " << cur_rot_degree << endl;
 		cur_roi.width = round(target_sz.width*cur_scale);
 		cur_roi.height = round(target_sz.height*cur_scale);
 		//cur_roi.width = round(cur_roi.width*delta_scale);
@@ -398,7 +373,6 @@ void LDESTracker::createGaussianPeak(int sizey, int sizex) {
 
 	res.copyTo(_y);
 	_yf = fftd(_y);
-	//std::cout << real(_yf) << std::endl;
 }
 
 cv::Mat LDESTracker::getFeatures(const cv::Mat & patch, cv::Mat& han, int* sizes, bool inithann)
@@ -426,7 +400,6 @@ cv::Mat LDESTracker::getFeatures(const cv::Mat & patch, cv::Mat& han, int* sizes
 	}
 	else if (!han.empty())
 		FeaturesMap = han.mul(FeaturesMap);
-	//std::cout << "feature map size: " << size_patch[0] << ',' << size_patch[1] << std::endl;
 	return FeaturesMap;
 }
 
@@ -476,8 +449,37 @@ void LDESTracker::weightedPeak(cv::Mat& resmap, cv::Point2f& peak, int pad) {
 	peak.y = ysum / sum;
 }
 
-float LDESTracker::calcPSR(const cv::Mat& res, cv::Point2i& peak_loc) {
-	return res.at<float>(peak_loc.y, peak_loc.x);
+float LDESTracker::calcPSR() {
+	int px = round(peak_loc.x);
+	int py = round(peak_loc.y);
+
+	cv::Mat res = resmap_location.clone();
+	float peak = pv_location;
+
+	const float rate = 0.6 / (1 + padding);
+	int range = (int)(sqrt(res.cols*res.rows)*rate);
+
+	cv::Rect peak_rect = cv::Rect(px - range / 2, py - range / 2, range, range);
+
+	cv::Mat peakBuff = cv::Mat::zeros(range, range, CV_32FC1);
+	peakBuff.copyTo(res(peak_rect));
+
+	float numel = res.cols*res.rows;
+	float mu = cv::sum(res)[0];// / ();
+	mu /= numel;
+	cv::Mat subs;
+	cv::subtract(res, mu, subs);
+	cv::multiply(subs, subs, subs);
+	float var = cv::sum(subs)[0];
+	var /= (numel - 1);	//sample variance
+	float stdev = sqrt(var);
+
+	float psr = (peak - mu) / stdev;
+
+	cscore = psr;
+	psr += sscore;
+
+	return psr;
 }
 
 cv::Rect LDESTracker::testKCFTracker(const cv::Mat& image, cv::Rect& rect, bool init) {
@@ -486,23 +488,21 @@ cv::Rect LDESTracker::testKCFTracker(const cv::Mat& image, cv::Rect& rect, bool 
 	if (init) {
 		_rotation = false;
 		this->init(rect, image);		
-		return cv::Rect();
+		return rect;
 	}
 	else {
 		getSubWindow(image, "loc");
-		cv::Mat win_img = image.clone();
 		cv::Rect rec(cur_pos.x - window_sz / 2, cur_pos.y - window_sz / 2, window_sz, window_sz);
-		cv::rectangle(win_img, rec, cv::Scalar(0, 255, 0), 2);
 		
 		cv::Mat x = getFeatures(patch, hann, size_patch, false);
 		estimateLocation(_z, x);
 		x = getFeatures(patch, hann, size_patch, false);
-		cv::circle(win_img, cur_pos, 4, cv::Scalar(0, 0, 255), -1);
-		cv::imshow("window", win_img);
-		cur_roi.width =target_sz0.width*cur_scale;
-		cur_roi.height = target_sz0.height*cur_scale;
-		cur_roi.x = cur_pos.x - cur_roi.width / 2;
-		cur_roi.y = cur_pos.y - cur_roi.height / 2;
+		
+		cur_roi.width = round(target_sz.width*cur_scale);
+		cur_roi.height = round(target_sz.height*cur_scale);
+		cur_roi.x = round(cur_pos.x - cur_roi.width / 2);
+		cur_roi.y = round(cur_pos.y - cur_roi.height / 2);
+
 		trainLocation(x, train_interp_factor);
 		return cur_roi;
 	}
