@@ -17,7 +17,9 @@ There are some differences between the C++ code and the [MATLAB code](https://gi
 * The ugly code in main.cpp is kept for a better vision on the connection between LDES and KCF, and tell you how to use phase correlation to estimate the scale and rotation.
 
 # Example
-Uploading...
+![tracking-example][logo]
+
+[logo]: https://github.com/yfji/LDESCpp/blob/square/examples/toy.gif "tracking-example"
 
 # Contact 
 * Yufeng Ji, jyf131462@163.com
