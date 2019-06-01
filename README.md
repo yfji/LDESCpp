@@ -14,12 +14,9 @@ OpenCV>=3.3.0. We test the code on OpenCV-3.1.0, which shows different results. 
 There are some differences between the C++ code and the [MATLAB code](https://github.com/ihpdep/LDES). They are listed below.
 * The block gradient descend (BGD) is not implemented in our code, for higher efficiency. Our code runs correlation filter and phase correlation only one time.
 * The feature map fusion is not implemented in our code. We use the fhog feature map. Thanks to [KCFCpp](https://github.com/joaofaro/KCFcpp). We take part from your code!
-* The ugly code in main.cpp is kept for a better vision on the connection between LDES and KCF, and tell you how to use phase correlation to estimate the scale and rotation.
 
 # Example
-![tracking-example][logo]
-
-[logo]: https://github.com/yfji/LDESCpp/blob/square/examples/toy.gif "tracking-example"
+![tracking-example](https://github.com/yfji/LDESCpp/blob/square/examples/toy.gif "tracking-example")
 
 # Contact 
 * Yufeng Ji, jyf131462@163.com
