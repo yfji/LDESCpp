@@ -11,7 +11,7 @@ public:
 	~LDESTracker();
 
 	void init(const cv::Rect &roi, cv::Mat image);
-	void update(cv::Mat image);	//update BGD
+	cv::Rect update(cv::Mat& image);	//update BGD
 
 	float interp_n;
 	float interp_factor; // linear interpolation factor for adaptation
@@ -22,12 +22,9 @@ public:
 	int cell_size_scale;
 	float padding; // extra area surrounding the target
 	float scale_padding;
-	float inter_patch_rate;
-	float color_update_rate;
-	float color_bins;
-	float merge_factor;
 	float output_sigma_factor; // bandwidth of gaussian target
 	int template_size; // template size
+	int scale_template_size;
 
 	float scale_step; // scale step for multi-scale estimation
 	float scale_weight;  // to downweight detection scores of other scales for added stability
@@ -71,6 +68,7 @@ public:
 	float delta_rot;
 	float delta_scale;
 	float mag;
+	float conf;
 
 	cv::Mat resmap_location;
 	float pv_location;

@@ -19,8 +19,8 @@ std::vector<cv::Point2i> get_rotated_rect(cv::Rect& rec, float degree);
 
 int main()
 {
-	testPhaseCorrelation();
-	//testLDES();
+	//testPhaseCorrelation();
+	testLDES();
 	//testKCF();
 	return 0;
 }
@@ -100,10 +100,10 @@ void testKCF() {
 }
 
 void testLDES() {
-	//string img_file = "J:/Dataset/OTB100/Toy.txt";
-	//string label_file = "J:/Dataset/OTB100/Toy_label.txt";
-	string img_file = "J:/Dataset/tracking-traffic/annotations_otb/avi_0.txt";
-	string label_file = "J:/Dataset/tracking-traffic/annotations_otb/avi_0/target_2.txt";
+	string img_file = "J:/Dataset/OTB100/Toy.txt";
+	string label_file = "J:/Dataset/OTB100/Toy_label.txt";
+	//string img_file = "J:/Dataset/tracking-traffic/annotations_otb/avi_0.txt";
+	//string label_file = "J:/Dataset/tracking-traffic/annotations_otb/avi_0/target_2.txt";
 	LDESTracker tracker;
 
 	ifstream fin, lfin;
@@ -129,8 +129,7 @@ void testLDES() {
 			new_pos = position;
 		}
 		else {
-			tracker.updateModel(image,0);
-			new_pos = tracker.cur_roi;
+			new_pos = tracker.update(image);
 			rot_degree = tracker.cur_rot_degree;
 		}
 		++frameIndex;
