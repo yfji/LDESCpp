@@ -241,7 +241,8 @@ void LDESTracker::estimateLocation(cv::Mat& z, cv::Mat x)
 {
 	cv::Mat kf = gaussianCorrelation(x, z, size_patch[0], size_patch[1], size_patch[2], sigma);
 	cv::Mat res = fftd(complexMultiplication(_alphaf, kf), true);
-	
+	res.copyTo(resmap_location);
+
 	cv::Point2i pi;
 	double pv;
 	cv::minMaxLoc(res, NULL, &pv, NULL, &pi);
@@ -256,6 +257,9 @@ void LDESTracker::estimateLocation(cv::Mat& z, cv::Mat x)
 	if (pi.y > 0 && pi.y < res.rows - 1) {
 		p.y += subPixelPeak(res.at<float>(pi.y - 1, pi.x), peak_value, res.at<float>(pi.y + 1, pi.x));
 	}
+	peak_loc.x = p.x;
+	peak_loc.y = p.y;
+
 	//weightedPeak(res, p, 2);
 	float px = p.x, py = p.y;
 	px -= res.cols/2;
@@ -320,7 +324,7 @@ cv::Rect LDESTracker::update(cv::Mat& image) {
 	tmp_scale = _scale;
 	tmp_scale2 = _scale2;
 	mscore = calcPSR();
-	for (int i = 1; i <= 1; ++i) {	//BGD iterations, <=5, you can have a test
+	for (int i = 1; i <= 5; ++i) {	//BGD iterations, <=5, you can have a test
 		if (floor(tmp_scale*window_sz0) < 5)
 			tmp_scale = 1.0;
 		if (floor(tmp_scale2*scale_sz0) < 5)

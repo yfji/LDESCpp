@@ -100,8 +100,8 @@ void testKCF() {
 }
 
 void testLDES() {
-	string img_file = "J:/Dataset/OTB100/Toy.txt";
-	string label_file = "J:/Dataset/OTB100/Toy_label.txt";
+	string img_file = "J:/Dataset/OTB100/Skiing.txt";
+	string label_file = "J:/Dataset/OTB100/Skiing_label.txt";
 	//string img_file = "J:/Dataset/tracking-traffic/annotations_otb/avi_0.txt";
 	//string label_file = "J:/Dataset/tracking-traffic/annotations_otb/avi_0/target_2.txt";
 	LDESTracker tracker;
@@ -164,7 +164,7 @@ cv::Mat getHistFeatures(cv::Mat& img, int* size) {
 void testPhaseCorrelation() {
 	cv::Rect roi(84, 53, 62, 70);
 	LDESTracker tracker;
-	float padding = 1.5;
+	float padding = 2.5;
 	int sz = 120;
 
 	int window_sz = static_cast<int>(sqrt(roi.area())*padding);
@@ -245,7 +245,7 @@ void testPhaseCorrelation() {
 	float rot = -py* 180.0 / (size[0] * 0.5);
 	float scale = exp((px)/mag);
 
-	cout << "py: "<<py<<", rot: " << rot << ", scale: " << 1.0*last_scale*scale << endl;
+	cout <<"rot: " << rot << ", scale: " << 1.0*last_scale*scale << endl;
 	cv::normalize(res, res, 0, 1, cv::NORM_MINMAX);
 	cv::imshow("log1", log1);
 	cv::imshow("log2", log2);
