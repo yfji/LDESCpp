@@ -9,6 +9,7 @@ LDESTracker::LDESTracker()
 	_hogfeatures = true;
 	_rotation = true;
 	_scale_hog = true;
+	_scale_hann = false;
 	interp_factor = 0.012;
 	sigma = 0.6;
 	cell_size = 4;
@@ -91,7 +92,10 @@ void LDESTracker::getTemplates(const cv::Mat& image) {
 	if (!_scale_hog)
 		xl = getPixFeatures(patchL, size_scale);
 	else
-		xl = getFeatures(patchL, empty_, size_scale); 
+		if(!_scale_hann)
+			xl = getFeatures(patchL, empty_, size_scale); 
+		else
+			xl = getFeatures(patchL, hann_scale, size_scale, true);
 
 	createGaussianPeak(size_patch[0], size_patch[1]);
 
@@ -365,7 +369,10 @@ void LDESTracker::updateModel(cv::Mat& image, int polish) {
 	if(!_scale_hog)
 		xl= getPixFeatures(patchL, size_scale);
 	else
-		xl = getFeatures(patchL, empty_, size_scale);
+		if(!_scale_hann)
+			xl = getFeatures(patchL, empty_, size_scale);
+		else
+			xl = getFeatures(patchL, hann_scale, size_scale, false);
 
 	estimateScale(modelPatch, xl);
 		
@@ -391,7 +398,10 @@ void LDESTracker::updateModel(cv::Mat& image, int polish) {
 	if (!_scale_hog)
 		xl = getPixFeatures(patchL, size_scale);
 	else
-		xl = getFeatures(patchL, empty_, size_scale);
+		if(!_scale_hann)
+			xl = getFeatures(patchL, empty_, size_scale);
+		else		
+			xl = getFeatures(patchL, hann_scale, size_scale, false);
 		
 	trainLocation(x, train_interp_factor);
 	trainScale(xl, interp_factor_scale);

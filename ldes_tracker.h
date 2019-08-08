@@ -45,6 +45,7 @@ public:
 	float scale_base;
 
 	cv::Mat hann;
+	cv::Mat hann_scale;
 
 	cv::Mat patch;
 	cv::Mat patchL;
@@ -122,4 +123,5 @@ private:
 	bool _labfeatures;
 	bool _rotation;
 	bool _scale_hog;
+	bool _scale_hann;
 };

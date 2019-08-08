@@ -100,8 +100,8 @@ void testKCF() {
 }
 
 void testLDES() {
-	string img_file = "J:/Dataset/OTB100/Skiing.txt";
-	string label_file = "J:/Dataset/OTB100/Skiing_label.txt";
+	string img_file = "J:/Dataset/OTB100/Toy.txt";
+	string label_file = "J:/Dataset/OTB100/Toy_label.txt";
 	//string img_file = "J:/Dataset/tracking-traffic/annotations_otb/avi_0.txt";
 	//string label_file = "J:/Dataset/tracking-traffic/annotations_otb/avi_0/target_2.txt";
 	LDESTracker tracker;
@@ -148,19 +148,6 @@ void testLDES() {
 	}
 }
 
-cv::Mat getHistFeatures(cv::Mat& img, int* size) {
-	cv::Mat features(img.channels(), img.cols*img.rows, CV_32F);
-	vector<cv::Mat > planes(3);
-	cv::split(img, planes);
-	planes[0].reshape(1, 1).copyTo(features.row(0));
-	planes[1].reshape(1, 1).copyTo(features.row(1));
-	planes[2].reshape(1, 1).copyTo(features.row(2));
-	size[0] = img.rows;
-	size[1] = img.cols;
-	size[2] = img.channels();
-	return features;
-}
-
 void testPhaseCorrelation() {
 	cv::Rect roi(84, 53, 62, 70);
 	LDESTracker tracker;
@@ -181,17 +168,17 @@ void testPhaseCorrelation() {
 	cv::resize(img1, img1, cv::Size(sz, sz));
 
 	float last_scale = 1.1;
-	float cur_scale = 1.2;
-	cv::Mat rot_matrix = cv::getRotationMatrix2D(cv::Point2f(cx, cy), 20.5, cur_scale);
+	float cur_scale = 1.3;
+	cv::Mat rot_matrix = cv::getRotationMatrix2D(cv::Point2f(cx, cy), 10.5, cur_scale);
 	rot_matrix.convertTo(rot_matrix, CV_32F);
 	rot_matrix.at<float>(0, 2) += window_sz * last_scale * 0.5 - cx;
 	rot_matrix.at<float>(1, 2) += window_sz * last_scale * 0.5 - cy;
 
 	cv::warpAffine(image, img2, rot_matrix, cv::Size(window_sz*last_scale,window_sz*last_scale));
 	cv::resize(img2, img2, cv::Size(sz, sz));	//cannot resize
-	//cv::blur(img2, img2, cv::Size(5, 5));
-	//cv::Mat mask(20, 60, CV_8UC3, cv::Scalar(0));
-	//mask.copyTo(img2(cv::Rect(10, 40, mask.cols, mask.rows)));
+	// cv::blur(img2, img2, cv::Size(5, 5));
+	// cv::Mat mask(20, 60, CV_8UC3, cv::Scalar(0));
+	// mask.copyTo(img2(cv::Rect(10, 40, mask.cols, mask.rows)));
 	cv::imshow("img1", img1);
 	cv::imshow("img2", img2);
 
@@ -205,7 +192,7 @@ void testPhaseCorrelation() {
 	int size[3] = { 0 };
 
 	//better with larger featuremap
-	bool _hog = false;
+	bool _hog = true;
 
 	cv::Mat x1, x2;
 	if (_hog) {
@@ -214,9 +201,17 @@ void testPhaseCorrelation() {
 		x2 = tracker.getFeatures(log2, _empty, size, false);
 	}
 	else {
-		x1 = getHistFeatures(log1, size);
-		x2 = getHistFeatures(log2, size);
+		x1 = tracker.getPixFeatures(log1, size);
+		x2 = tracker.getPixFeatures(log2, size);
 	}
+	//vector<cv::Mat> rgb(3), ri(2);
+	//cv::split(img2, rgb);
+	//cv::Mat xf = fftd(rgb[0]);
+	//cv::split(xf, ri);
+	//rearrange(ri[1]);
+	//cv::normalize(ri[1], ri[1], 0, 1, cv::NORM_MINMAX);
+	//cv::imshow("ff", ri[1]);
+
 	cv::Mat rf=phaseCorrelation(x2, x1, size[0], size[1], size[2]);
 	cv::Mat res = fftd(rf, true);
 	rearrange(res);
@@ -228,24 +223,24 @@ void testPhaseCorrelation() {
 	double pv;
 	cv::minMaxLoc(res, NULL, &pv, NULL, &pi);
 
-	pi.x += 5;
-	pi.y += 5;
+	//pi.x += 5;
+	//pi.y += 5;
 
-	float px = pi.x, py = pi.y;
+	float px = pi.x + 5, py = pi.y + 5;
 	if (px > 0 && px < res.cols - 1) {
-		px += tracker.subPixelPeak(res.at<float>(py, px - 1), pv, res.at<float>(py, px + 1));
+		px += tracker.subPixelPeak(res.at<float>(pi.y, pi.x - 1), pv, res.at<float>(pi.y, pi.x + 1));
 	}
 
 	if (py > 0 && py < res.rows - 1) {
-		py += tracker.subPixelPeak(res.at<float>(py - 1, px), pv, res.at<float>(py + 1, px));
+		py += tracker.subPixelPeak(res.at<float>(pi.y - 1, pi.x), pv, res.at<float>(pi.y + 1, pi.x));
 	}
 
 	px -= size[1] * 0.5;
 	py -= size[0] * 0.5;
 	float rot = -py* 180.0 / (size[0] * 0.5);
-	float scale = exp((px)/mag);
+	float dscale = exp((px)/mag);
 
-	cout <<"rot: " << rot << ", scale: " << 1.0*last_scale*scale << endl;
+	cout <<"rot: " << rot << ", scale: " << 1.0*last_scale*dscale << endl;
 	cv::normalize(res, res, 0, 1, cv::NORM_MINMAX);
 	cv::imshow("log1", log1);
 	cv::imshow("log2", log2);
